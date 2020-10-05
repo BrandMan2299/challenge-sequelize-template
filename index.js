@@ -111,17 +111,22 @@ class MySequelize {
         let results = await this.connection.query(
             this.optionOpener(options)
         )
-        if (options && options.include) {
-            const extraTable = await this.connection.query(
-                `SELECT *
-                FROM ${options.include[0].table}
-                WHERE ${options.include[0].tableForeignKey} = ${options.include[0].sourceForeignKey}`
-            )
-            results[0][0][options.include[0].table] = extraTable;
-            console.log(results[0][0])
+        if (options) {
+            if (options.include) {
+                let resultPlusINclude = await Promise.all(
+                    results[0].map(async (obj) => {
+                        const joiner = await this.connection.query(
+                            `SELECT * FROM ${options.include[0].table
+                            } WHERE ${options.include[0].tableForeignKey}=${obj[options.include[0].sourceForeignKey]
+                            }`
+                        );
+                        obj[options.include[0].table] = joiner[0];
+                        return obj;
+                    })
+                );
+                return resultPlusINclude;
+            }
         }
-
-        // console.log(results[0]);
         return results[0];
         /*
         Model.findAll({
@@ -187,14 +192,29 @@ class MySequelize {
     }
 
     async update(newDetsils, options) {
-        const whereKeys = options.where ? Object.keys(options.where) : [];
-        const whereValues = options.where ? Object.values(options.where) : [];
-        let where = 'true ';
-        for (let i = 0; i < whereKeys.length; i++) {
-            where += `AND ${whereKeys[i]} = ${typeof whereValues[i] === "string" ? `"${whereValues[i]}"` : whereValues[i]}`
+        let whereClause = "";
+        if (options.where) {
+            let opUsed = Reflect.ownKeys(options.where); // All keys including symbols
+            whereClause = " WHERE ";
+            //Creating an array containing trios of [key,value,operator]
+            let keyValuesOp = opUsed.map((op) =>
+                typeof op === "symbol"
+                    ? [Object.entries(options.where[op]), Symbol.keyFor(op)].flat(2)
+                    : [op, options.where[op], "="]
+            );
+            //Converting the array into sql clause: for[id,5,>]->id>5
+            whereClause += keyValuesOp
+                .map(
+                    (trio) =>
+                        `${trio[0]}${trio[2]}${isNaN(trio[1]) ? `'${trio[1]}'` : trio[1]
+                        } AND`
+                )
+                .join(" ")
+                .slice(0, -3);
         }
+
         await this.connection.query(
-            `UPDATE ${this.table} SET ? WHERE ${where}`, newDetsils
+            `UPDATE ${this.table} SET ? ${whereClause}`, newDetsils
         )
         /*
             Model.update( { name: 'test6', email: 'test6@gmail.com' } , {

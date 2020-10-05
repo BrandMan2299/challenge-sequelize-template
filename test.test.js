@@ -11,7 +11,7 @@ describe("MySequelize Challenge", () => {
     mysqlCon = await mysql.createConnection({
       host: 'localhost',
       user: 'root',
-      password: null,
+      password: 'brand123',
       database: 'db_test',
       multipleStatements: true,
     });

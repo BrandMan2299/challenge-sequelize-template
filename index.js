@@ -239,7 +239,7 @@ class MySequelize {
         }
         else {
             await this.connection.query(
-                `UPDATE ${this.table} SET deleted_at="0000-00-00 00:00:00" WHERE deleted_at IS NULL ${where}`
+                `UPDATE ${this.table} SET deleted_at="2020-01-01 01:01:01" WHERE deleted_at IS NULL ${where}`
             )
         }
 
